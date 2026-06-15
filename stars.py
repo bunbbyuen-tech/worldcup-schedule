@@ -89,16 +89,24 @@ def starred_teams():
     return set(_load().keys())
 
 
-def toggle_star(team, who=""):
-    """Star/un-star a team. Read-then-write to stay safe with concurrent users.
+def toggle_star(team, who):
+    """Toggle THIS person's star on a team (per-person). Read-then-write so
+    concurrent family members don't clobber each other.
 
-    Returns True if the team is now starred, False if it was removed.
+    A team key holds the list of people who starred it. Returns True if `who`
+    now stars the team, False if their star was removed.
     """
     data = _load()
-    if team in data:
-        del data[team]
-        _save(data)
-        return False
-    data[team] = [who] if who else []
+    fans = list(data.get(team, []))
+    if who in fans:
+        fans.remove(who)
+        res = False
+    else:
+        fans.append(who)
+        res = True
+    if fans:
+        data[team] = fans
+    else:
+        data.pop(team, None)
     _save(data)
-    return True
+    return res

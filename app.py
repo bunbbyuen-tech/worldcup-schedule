@@ -215,45 +215,85 @@ with tab_table:
 # Tab 3 — Knockout bracket
 # ----------------------------------------------------------------------------
 with tab_ko:
-    ko_order = [("r32", "32 強"), ("r16", "16 強"), ("qf", "8 強"),
-                ("sf", "4 強"), ("third", "季軍戰"), ("final", "決賽")]
-    ko = [m for m in matches if m["stage_key"] in dict(ko_order)]
-    if not ko:
+    st.markdown("""
+    <style>
+    .bk-round{font-size:12px;font-weight:800;color:#888;margin:10px 0 4px}
+    .bk-pill{font-size:13px;padding:6px 9px;border:1px solid #ececec;border-radius:9px;margin-bottom:4px;background:#fff}
+    .bk-pill.star{border-left:3px solid #f4b400;background:#fffdf5}
+    .bk-pill.live{border-left:3px solid #e24b4a;background:#fff7f6}
+    .bk-date{color:#aaa;font-size:11px;margin-right:6px}
+    .half-hd{font-size:15px;font-weight:800;margin:16px 0 4px}
+    .bk-final{font-size:15px;font-weight:800;text-align:center;padding:12px;border:2px solid #E24B4A;border-radius:11px;background:#fff5f5;margin:14px 0}
+    .bk-third{font-size:12.5px;text-align:center;color:#777;margin:6px 0 2px}
+    </style>
+    """, unsafe_allow_html=True)
+
+    INDENT = {"r32": 0, "r16": 12, "qf": 24, "sf": 36}
+
+    def bk_pill(m):
+        star = m["home"] in starset or m["away"] in starset
+        cls = "bk-pill" + (" live" if m["live"] else " star" if star else "")
+        if (m["finished"] or m["live"]) and m["home_goals"] is not None:
+            mid = f'<b>{m["home_goals"]}-{m["away_goals"]}</b>'
+        else:
+            mid = '<span style="color:#bbb">v</span>'
+        home = ("⭐" if m["home"] in starset else "") + m["home"]
+        away = m["away"] + ("⭐" if m["away"] in starset else "")
+        ml = INDENT.get(m["stage_key"], 0)
+        return (f'<div class="{cls}" style="margin-left:{ml}px">'
+                f'<span class="bk-date">{m["date"]}</span>{home} {mid} {away}</div>')
+
+    def render_half(rounds, title):
+        st.markdown(f'<div class="half-hd">{title}</div>', unsafe_allow_html=True)
+        for rnd in rounds:
+            st.markdown(f'<div class="bk-round" style="margin-left:{INDENT.get(rnd["stage_key"],0)}px">{rnd["label"]}</div>',
+                        unsafe_allow_html=True)
+            for m in rnd["matches"]:
+                st.markdown(bk_pill(m), unsafe_allow_html=True)
+
+    bracket = api.build_bracket()
+    if not bracket:
         st.info("淘汰賽未開始 — 小組賽完成後自動填上對陣。")
     else:
-        for key, label in ko_order:
-            stage_matches = [m for m in ko if m["stage_key"] == key]
-            if not stage_matches:
-                continue
-            st.subheader(label)
-            for m in stage_matches:
-                render_match(m, starset)
+        st.caption("由 32 強一路打上決賽。小組賽完成後，對陣會自動填上真實球隊。")
+        render_half(bracket["upper"], "🔼 上半區")
+        st.markdown(f'<div class="bk-final">🏆 決賽 · {bracket["final"]["date"]}<br>'
+                    f'{bracket["final"]["home"]} vs {bracket["final"]["away"]}</div>',
+                    unsafe_allow_html=True)
+        if bracket["third"]:
+            t = bracket["third"]
+            st.markdown(f'<div class="bk-third">🥉 季軍戰 · {t["date"]} · {t["home"]} vs {t["away"]}</div>',
+                        unsafe_allow_html=True)
+        render_half(bracket["lower"], "🔽 下半區")
 
 
 # ----------------------------------------------------------------------------
 # Tab 4 — Star teams (shared, 2 columns for mobile)
 # ----------------------------------------------------------------------------
 with tab_star:
-    st.caption("揀心水隊 — 全家共享。心水隊嘅場次同排名會用 ⭐ 突出。")
-    who = st.selectbox("你係邊個？（star 時記低）", FAMILY, index=None,
-                       placeholder="揀你嘅名", key="who")
+    st.caption("揀返你係邊個，再 star 你嘅心水隊。全家都會睇到大家心水邊隊（賽程／積分榜會 ⭐ 突出）。")
+    who = st.selectbox("你係邊個？", FAMILY, index=None, placeholder="揀你嘅名", key="who")
     starred = stars.get_starred()
+
     if starred:
-        st.markdown("**已 star：** " + " · ".join(
-            f"⭐ {t}" + (f"（{', '.join(w)}）" if w else "") for t, w in starred.items()
-        ))
+        st.markdown("**全家心水隊：** " + " · ".join(
+            f"⭐{t}（{'、'.join(w)}）" if w else f"⭐{t}" for t, w in starred.items()))
     else:
-        st.markdown("_仲未有心水隊。_")
+        st.markdown("_仲未有人 star。_")
 
     st.divider()
+    if not who:
+        st.info("☝️ 先揀你係邊個，先可以 star。")
     teams = api.team_list(matches)
     if not teams:
         st.info("未有隊伍資料。")
     cols = st.columns(2)
     for i, t in enumerate(teams):
         with cols[i % 2]:
-            on = t in starset
-            label = ("⭐ " if on else "☆ ") + t
-            if st.button(label, key=f"star_{t}", use_container_width=True):
-                stars.toggle_star(t, (st.session_state.get("who") or "").strip())
+            fans = starred.get(t, [])
+            mine = bool(who) and who in fans
+            tag = f" ·{len(fans)}" if fans else ""
+            label = ("⭐ " if mine else "☆ ") + t + tag
+            if st.button(label, key=f"star_{t}", use_container_width=True, disabled=not who):
+                stars.toggle_star(t, who)
                 st.rerun()

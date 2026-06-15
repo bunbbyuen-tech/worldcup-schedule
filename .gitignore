@@ -1,0 +1,5 @@
+.streamlit/secrets.toml
+stars.json
+*.bak_*
+__pycache__/
+*.pyc

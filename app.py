@@ -141,11 +141,12 @@ if source == "bundled":
 
 with st.sidebar:
     st.header("設定")
-    who = st.text_input("你嘅名（star 時記低係邊個）", key="who", placeholder="例：媽咪")
     if st.button("🔄 更新賽果", use_container_width=True):
         api.clear_caches()
         st.rerun()
     st.caption("賽程同比數每半個鐘自動更新；㩒呢個掣即刻拎最新。")
+
+FAMILY = ["Nam", "Tung", "Dad", "Mum"]
 
 tab_sched, tab_table, tab_ko, tab_star = st.tabs(["📅 賽程", "📊 積分榜", "🏆 淘汰賽", "⭐ 心水隊"])
 
@@ -234,6 +235,8 @@ with tab_ko:
 # ----------------------------------------------------------------------------
 with tab_star:
     st.caption("揀心水隊 — 全家共享。心水隊嘅場次同排名會用 ⭐ 突出。")
+    who = st.selectbox("你係邊個？（star 時記低）", FAMILY, index=None,
+                       placeholder="揀你嘅名", key="who")
     starred = stars.get_starred()
     if starred:
         st.markdown("**已 star：** " + " · ".join(
@@ -252,5 +255,5 @@ with tab_star:
             on = t in starset
             label = ("⭐ " if on else "☆ ") + t
             if st.button(label, key=f"star_{t}", use_container_width=True):
-                stars.toggle_star(t, st.session_state.get("who", "").strip())
+                stars.toggle_star(t, (st.session_state.get("who") or "").strip())
                 st.rerun()

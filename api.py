@@ -88,6 +88,18 @@ def clear_caches():
     _raw.clear()
 
 
+def raw_data():
+    """Raw openfootball payload (data, source) — for the bracket resolver,
+    which needs the original placeholder tokens (e.g. '2A', 'W74') that the
+    normalised match list translates away."""
+    return _raw()
+
+
+def zh_name(name):
+    """Public access to the English -> Traditional Chinese translator."""
+    return _zh(name)
+
+
 # ----------------------------------------------------------------------------
 # Parsing
 # ----------------------------------------------------------------------------

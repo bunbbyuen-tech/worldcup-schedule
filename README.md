@@ -31,15 +31,24 @@ streamlit run app.py
 |---|---|
 | `app.py` | 主 dashboard（4 個 tab：賽程／積分榜／淘汰賽／心水隊）|
 | `api.py` | openfootball 數據連接 + cache + 本機備份 fallback + 積分自動計算 |
+| `bracket.py` | 淘汰賽鬼腳圖：placeholder 解析（組首組次／勝負方）+ 生成 PNG（中文隊名、⭐心水隊突出）|
 | `stars.py` | 全家共享心水隊（v1 本機 JSON；Phase 2 換 Google Sheet）|
 | `schedule_2026.json` | 本機備份賽程（拎唔到網時用）|
+| `packages.txt` | Streamlit Cloud 裝中文字型（fonts-noto-cjk），令 PNG 中文唔變空格 |
 
 ## 上線 + 待辦（roadmap）
 
-- [x] 手機為主 readable UI + 三地時區 + 積分榜 + bracket + star UI
+- [x] 手機為主 readable UI + 三地時區 + 積分榜 + star UI
 - [x] 接真實免費數據（openfootball，無 key）+ 本機備份 fallback
+- [x] 推上 Streamlit Community Cloud，公開連結畀家人
+- [x] 淘汰賽鬼腳圖 PNG（自動由 live data 填隊、可下載分享）
 - [ ] Phase 2：star 換 Google Sheet（全家共享、跨重啟保留）
-- [ ] Phase 4：推上 Streamlit Community Cloud，攞公開連結畀家人
+
+### 鬼腳圖點運作
+`bracket.py` 每次開頁由 live 數據即時畫：組賽一完 → 出組首組次（用我哋自己算嘅積分榜）；
+淘汰賽逐場入結果 → 自動填上勝方，無需人手 push。**唯一限制**：12 隊「最佳第三名」嘅
+官方分配對照表未做，所以第三名 slot 會等 openfootball 自己填上真隊名先顯示（之前顯示
+「第三名 A/B/C/D/F」combo）。
 
 資料來源核對日：2026-06-15 · [openfootball/worldcup.json](https://github.com/openfootball/worldcup.json)
 

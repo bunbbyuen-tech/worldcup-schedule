@@ -41,8 +41,9 @@ streamlit run app.py
 - [x] 手機為主 readable UI + 三地時區 + 積分榜 + star UI
 - [x] 接真實免費數據（openfootball，無 key）+ 本機備份 fallback
 - [x] 推上 Streamlit Community Cloud，公開連結畀家人
-- [x] 淘汰賽鬼腳圖 PNG（自動由 live data 填隊、可下載分享）
-- [ ] Phase 2：star 換 Google Sheet（全家共享、跨重啟保留）
+- [x] 全家共享 star（Gist 後端，跨重啟保留）
+- [x] 淘汰賽鬼腳圖 PNG（Google 卡式、賽日、中文隊名、48 國旗、⭐ 突出；自動由 live data 填隊）
+- [ ] 最佳第三名官方分配對照表（補咗第三名 slot 可更早自動解析；未補前等 openfootball 填真隊名）
 
 ### 鬼腳圖點運作
 `bracket.py` 每次開頁由 live 數據即時畫：組賽一完 → 出組首組次（用我哋自己算嘅積分榜）；

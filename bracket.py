@@ -37,6 +37,21 @@ THIRD_NUM = 103   # L101 vs L102
 
 GROUP_MATCHES = 6   # matches per group; a group is "settled" once all 6 are done
 
+# FIFA Annex C — best-third-place allocation to the Round of 32.
+# openfootball leaves these eight slots as combo placeholders (e.g. "3A/B/C/D/F")
+# until it manually fills the real teams, which lags the group stage by days.
+# Once the group stage finished, the eight best third-placed teams came from
+# groups B, D, E, F, I, J, K, L, and Annex C fixes exactly which group's third
+# team meets which group winner. We apply it ourselves so the bracket fills the
+# moment the groups settle. GUARDED: only applied if our own standings reproduce
+# this same qualifying set — if the data ever differs, we fall back to the
+# placeholder rather than show a wrong team.
+# Source: 2026 FIFA World Cup knockout stage, Annex C combination table
+# (en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage), verified 2026-06-28.
+THIRD_QUALIFIED = frozenset("BDEFIJKL")
+THIRD_SLOT_GROUP = {74: "D", 77: "F", 79: "E", 80: "K",
+                    81: "B", 82: "I", 85: "J", 87: "L"}
+
 
 # ----------------------------------------------------------------------------
 # Resolution
@@ -54,6 +69,36 @@ def _group_ranks():
         if rows and played >= GROUP_MATCHES * 2:
             ranks[letter] = [rows[0]["team"], rows[1]["team"]]
     return ranks
+
+
+def _settled_groups():
+    """[(letter, rows)] for groups where all matches are played; rows are the
+    standings rows (already Chinese, already sorted 1st->4th)."""
+    groups, _ = api.load_standings()
+    out = []
+    for g in groups:
+        letter = g["name"].split()[0]
+        rows = g["rows"]
+        played = sum(r["played"] for r in rows)
+        if len(rows) >= 3 and played >= GROUP_MATCHES * 2:
+            out.append((letter, rows))
+    return out
+
+
+def _third_place():
+    """({letter: third_place_team_zh}, qualified_ok). qualified_ok is True only
+    when all 12 groups are settled AND the eight best third-placed teams match
+    the Annex C combination we encoded (THIRD_QUALIFIED)."""
+    settled = _settled_groups()
+    thirds = {letter: rows[2]["team"] for letter, rows in settled}
+    if len(settled) < 12:
+        return thirds, False
+    ranked = sorted(
+        settled,
+        key=lambda lr: (-lr[1][2]["points"], -lr[1][2]["gd"], -lr[1][2]["gf"]),
+    )
+    top8 = frozenset(letter for letter, _ in ranked[:8])
+    return thirds, top8 == THIRD_QUALIFIED
 
 
 def _winner_loser(m, want_winner, resolve):
@@ -110,12 +155,22 @@ def build_bracket():
         memo[token] = out
         return out
 
+    thirds, third_ok = _third_place()
+
     bracket = {}
     for n, m in by_num.items():
         if n < 73:        # group stage
             continue
         home, home_ok = resolve(m.get("team1"))
         away, away_ok = resolve(m.get("team2"))
+        # Fill the eight best-third-place slots via Annex C (guarded).
+        if third_ok and n in THIRD_SLOT_GROUP:
+            team = thirds.get(THIRD_SLOT_GROUP[n])
+            if team:
+                if (m.get("team1") or "").startswith("3"):
+                    home, home_ok = team, True
+                if (m.get("team2") or "").startswith("3"):
+                    away, away_ok = team, True
         ft = (m.get("score") or {}).get("ft")
         bracket[n] = {
             "home": home, "away": away, "home_ok": home_ok, "away_ok": away_ok,

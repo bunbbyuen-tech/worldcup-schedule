@@ -43,13 +43,14 @@ streamlit run app.py
 - [x] 推上 Streamlit Community Cloud，公開連結畀家人
 - [x] 全家共享 star（Gist 後端，跨重啟保留）
 - [x] 淘汰賽鬼腳圖 PNG（Google 卡式、賽日、中文隊名、48 國旗、⭐ 突出；自動由 live data 填隊）
-- [ ] 最佳第三名官方分配對照表（補咗第三名 slot 可更早自動解析；未補前等 openfootball 填真隊名）
+- [x] 最佳第三名官方分配對照表（FIFA Annex C；小組賽一完即自動填 8 個 32 強 slot，唔使等 openfootball）
 
 ### 鬼腳圖點運作
 `bracket.py` 每次開頁由 live 數據即時畫：組賽一完 → 出組首組次（用我哋自己算嘅積分榜）；
-淘汰賽逐場入結果 → 自動填上勝方，無需人手 push。**唯一限制**：12 隊「最佳第三名」嘅
-官方分配對照表未做，所以第三名 slot 會等 openfootball 自己填上真隊名先顯示（之前顯示
-「第三名 A/B/C/D/F」combo）。
+淘汰賽逐場入結果 → 自動填上勝方，無需人手 push。8 個「最佳第三名」slot 亦會喺小組賽
+完結即自動填真隊名，用 FIFA Annex C 官方對照表（唔再等 openfootball 慢慢填）。**防呆**：
+要本機算到嘅 8 隊出線組合同 Annex C 編碼一致先填，否則保留「第三名 A/B/C/D/F」combo，
+唔會顯示錯隊。Annex C 對照日：2026-06-28（出線組合 B/D/E/F/I/J/K/L）。
 
 資料來源核對日：2026-06-15 · [openfootball/worldcup.json](https://github.com/openfootball/worldcup.json)
 

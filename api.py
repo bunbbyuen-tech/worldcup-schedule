@@ -136,13 +136,22 @@ def _stage_of(round_str, group):
 
 
 def _normalise(m, now):
-    ft = (m.get("score") or {}).get("ft")
+    score = m.get("score") or {}
+    ft = score.get("ft")
+    et = score.get("et")          # 120-min score when the match went to extra time
+    pen = score.get("pen") or score.get("p")
     kickoff = _to_utc(m.get("date"), m.get("time", ""))
     stage_key, stage_label = _stage_of(m.get("round"), m.get("group"))
 
+    note = None
     if ft:
         status = "done"
-        hg, ag = ft[0], ft[1]
+        final = et or ft          # show the after-extra-time score, not the 90-min draw
+        hg, ag = final[0], final[1]
+        if pen:
+            note = f"十二碼 {pen[0]}-{pen[1]}"
+        elif et:
+            note = "加時"
     elif kickoff and kickoff <= now <= kickoff + timedelta(hours=LIVE_WINDOW_H):
         status, hg, ag = "live", None, None
     elif kickoff and now > kickoff:
@@ -159,6 +168,7 @@ def _normalise(m, now):
         "away": _zh(m.get("team2", "TBD")),
         "home_goals": hg,
         "away_goals": ag,
+        "note": note,
         "live": status == "live",
         "finished": status == "done",
         "venue": m.get("ground"),

@@ -101,19 +101,27 @@ def _third_place():
     return thirds, top8 == THIRD_QUALIFIED
 
 
+def _win_side(m):
+    """0 (team1) / 1 (team2) / None — who won a knockout match.
+    Decisive score is after extra time (`et`) when it exists, else `ft`;
+    a draw then falls to the penalty shoot-out (`pen`/`p`)."""
+    score = m.get("score") or {}
+    ft = score.get("et") or score.get("ft")
+    pen = score.get("pen") or score.get("p")
+    if pen and pen[0] != pen[1]:
+        return 0 if pen[0] > pen[1] else 1
+    if ft and ft[0] != ft[1]:
+        return 0 if ft[0] > ft[1] else 1
+    return None
+
+
 def _winner_loser(m, want_winner, resolve):
     """Resolved (zh) name of the winner/loser of raw match `m`, or None."""
-    ft = (m.get("score") or {}).get("ft")
-    pen = (m.get("score") or {}).get("pen") or (m.get("score") or {}).get("p")
-    t1 = resolve(m.get("team1"))[0]
-    t2 = resolve(m.get("team2"))[0]
-    side = None
-    if ft and ft[0] != ft[1]:
-        side = 0 if ft[0] > ft[1] else 1
-    elif pen and pen[0] != pen[1]:
-        side = 0 if pen[0] > pen[1] else 1
+    side = _win_side(m)
     if side is None:
         return None
+    t1 = resolve(m.get("team1"))[0]
+    t2 = resolve(m.get("team2"))[0]
     winners = (t1, t2)
     return winners[side] if want_winner else winners[1 - side]
 
@@ -171,10 +179,12 @@ def build_bracket():
                     home, home_ok = team, True
                 if (m.get("team2") or "").startswith("3"):
                     away, away_ok = team, True
-        ft = (m.get("score") or {}).get("ft")
+        score = m.get("score") or {}
+        ft = score.get("et") or score.get("ft")   # after-extra-time score if any
         bracket[n] = {
             "home": home, "away": away, "home_ok": home_ok, "away_ok": away_ok,
             "hg": ft[0] if ft else None, "ag": ft[1] if ft else None,
+            "win": _win_side(m) if ft else None,
             "finished": bool(ft),
             "utc": api._to_utc(m.get("date"), m.get("time", "")),
         }
@@ -368,8 +378,8 @@ def render_linear_png(bracket, starset=None):
                             fill=PANEL, outline=LINE, width=1)
         d.text((x + 12, y + CARD_PAD + CARD_DATEH / 2), _date_label(m.get("utc")),
                font=font_for(13), fill=MUTED, anchor="lm")
-        hw = m["finished"] and m["hg"] is not None and m["hg"] > m["ag"]
-        aw = m["finished"] and m["ag"] is not None and m["ag"] > m["hg"]
+        hw = m["finished"] and m.get("win") == 0
+        aw = m["finished"] and m.get("win") == 1
         ry = y + CARD_PAD + CARD_DATEH + 2
         _team_row(img, d, x, ry, CARD_W, m["home"], m["home_ok"], m["hg"], hw, starset, font_for)
         _team_row(img, d, x, ry + CARD_ROWH, CARD_W, m["away"], m["away_ok"], m["ag"], aw, starset, font_for)
@@ -387,8 +397,8 @@ def render_linear_png(bracket, starset=None):
     d.text((W / 2, 36), "世界盃 2026 · 淘汰賽", font=tf, fill=TITLE, anchor="mm")
     fm = bracket.get(FINAL_NUM, {})
     champ = None
-    if fm.get("finished") and fm.get("hg") is not None:
-        champ = fm["home"] if fm["hg"] > fm["ag"] else fm["away"]
+    if fm.get("finished") and fm.get("win") is not None:
+        champ = fm["home"] if fm["win"] == 0 else fm["away"]
     d.text((W / 2, 68), f"🏆 冠軍：{champ}" if champ else "冠軍待定",
            font=font_for(16), fill=GOLD, anchor="mm")
 
